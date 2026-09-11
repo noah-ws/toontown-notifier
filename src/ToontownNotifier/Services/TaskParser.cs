@@ -5,7 +5,6 @@ namespace ToontownNotifier.Services;
 
 public sealed class TaskParser
 {
-    private static readonly Regex CogWord = new(@"\bcogs?\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex SkelecogWord = new(@"\bskelecogs?\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex DepartmentWord = new(
         @"\b(bossbots?|lawbots?|cashbots?|sellbots?)\b",
@@ -32,7 +31,6 @@ public sealed class TaskParser
         var specific = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var departments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var summaries = new List<string>();
-        var anyCog = false;
         var skelecogsOnly = false;
 
         foreach (var task in tasks)
@@ -48,7 +46,6 @@ public sealed class TaskParser
                 continue;
             }
 
-            anyCog |= parsed.AnyCog;
             skelecogsOnly |= parsed.SkelecogsOnly;
             foreach (var cog in parsed.SpecificCogs)
             {
@@ -65,8 +62,7 @@ public sealed class TaskParser
 
         return new NeededCogs
         {
-            AnyCog = anyCog,
-            SkelecogsOnly = skelecogsOnly && specific.Count == 0 && departments.Count == 0 && !anyCog,
+            SkelecogsOnly = skelecogsOnly && specific.Count == 0 && departments.Count == 0,
             SpecificCogs = specific,
             Departments = departments,
             SourceSummaries = summaries,
@@ -104,22 +100,20 @@ public sealed class TaskParser
         }
 
         var skelecogsOnly = SkelecogWord.IsMatch(text);
-        var mentionsCog = CogWord.IsMatch(text) || skelecogsOnly;
         var facilityOnly = FacilityWord.IsMatch(text) && specific.Count == 0 && departments.Count == 0;
         if (facilityOnly)
         {
             return null;
         }
 
-        var anyCog = specific.Count == 0 && departments.Count == 0 && mentionsCog && !skelecogsOnly;
-        if (specific.Count == 0 && departments.Count == 0 && !anyCog && !skelecogsOnly)
+        // Generic “defeat Cogs” tasks match every invasion, so skip them.
+        if (specific.Count == 0 && departments.Count == 0 && !skelecogsOnly)
         {
             return null;
         }
 
         return new NeededCogs
         {
-            AnyCog = anyCog,
             SkelecogsOnly = skelecogsOnly && specific.Count == 0 && departments.Count == 0,
             SpecificCogs = specific,
             Departments = departments

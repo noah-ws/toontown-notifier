@@ -61,7 +61,7 @@ If you have no cog ToonTasks, set `MOCK_TASK=any` in `.env` (matches every invas
 
 - Named cog (“Defeat 5 Pencil Pushers”) matches that invasion type, including Version 2.0 / Skelecog variants.
 - Department (“Defeat 10 Sellbots”) matches any invading cog in that department.
-- Generic (“Defeat 10 Cogs”) matches any invasion.
+- Generic (“Defeat 10 Cogs”) is ignored — it would match every invasion.
 - Fishing, delivery, visits, and building/facility tasks are ignored.
 
 Each invasion is notified once per district + cog type until it ends.
