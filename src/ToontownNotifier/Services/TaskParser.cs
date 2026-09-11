@@ -37,6 +37,11 @@ public sealed class TaskParser
 
         foreach (var task in tasks)
         {
+            if (IsComplete(task))
+            {
+                continue;
+            }
+
             var parsed = ParseObjective(task.ObjectiveText);
             if (parsed is null)
             {
@@ -68,6 +73,9 @@ public sealed class TaskParser
             SourceLabel = sourceLabel
         };
     }
+
+    private static bool IsComplete(CompanionTask task) =>
+        task.Current is int current && task.Target is int target && target > 0 && current >= target;
 
     private NeededCogs? ParseObjective(string text)
     {

@@ -43,7 +43,16 @@ public class Program
         builder.Services.AddSingleton<TaskParser>();
         builder.Services.AddSingleton<InvasionMatcher>();
         builder.Services.AddSingleton<DiscordNotifier>();
-        builder.Services.AddHostedService<Worker>();
+
+        var testDiscord = args.Any(arg => string.Equals(arg, "--test-discord", StringComparison.OrdinalIgnoreCase));
+        if (testDiscord)
+        {
+            builder.Services.AddHostedService<DiscordTestHost>();
+        }
+        else
+        {
+            builder.Services.AddHostedService<Worker>();
+        }
 
         builder.Build().Run();
     }
@@ -58,6 +67,7 @@ public class Program
         options.ToonHqInvasionsUrl = configuration["TOONHQ_INVASIONS_URL"] ?? options.ToonHqInvasionsUrl;
         options.InvasionsApiUrl = configuration["INVASIONS_API_URL"] ?? options.InvasionsApiUrl;
         options.UserAgent = configuration["USER_AGENT"] ?? options.UserAgent;
+        options.MockTask = configuration["MOCK_TASK"] ?? options.MockTask;
 
         if (int.TryParse(configuration["POLL_INTERVAL_SECONDS"], out var poll))
         {
@@ -72,6 +82,11 @@ public class Program
         if (int.TryParse(configuration["COMPANION_PORT_END"], out var end))
         {
             options.CompanionPortEnd = end;
+        }
+
+        if (int.TryParse(configuration["COMPANION_PROXY_PORT"], out var proxyPort))
+        {
+            options.CompanionProxyPort = proxyPort;
         }
     }
 

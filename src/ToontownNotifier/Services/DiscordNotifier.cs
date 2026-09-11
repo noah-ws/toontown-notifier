@@ -21,13 +21,25 @@ public sealed class DiscordNotifier
         _logger = logger;
     }
 
-    public async Task NotifyAsync(InvasionMatch match, NeededCogs needed, string? toonName, CancellationToken cancellationToken)
+    public async Task NotifyAsync(
+        InvasionMatch match,
+        NeededCogs needed,
+        string? toonName,
+        CancellationToken cancellationToken,
+        bool test = false)
     {
         var invasion = match.Invasion;
         var title = $"{invasion.Type} in {invasion.District}";
-        var description = string.IsNullOrWhiteSpace(toonName)
-            ? $"This invasion matches your ToonTasks ({match.Reason})."
-            : $"This invasion matches **{toonName}**'s ToonTasks ({match.Reason}).";
+        if (test)
+        {
+            title = $"[TEST] {title}";
+        }
+
+        var description = test
+            ? "This is a forced test ping. It does not mean a new matching invasion just started."
+            : string.IsNullOrWhiteSpace(toonName)
+                ? $"This invasion matches your ToonTasks ({match.Reason})."
+                : $"This invasion matches **{toonName}**'s ToonTasks ({match.Reason}).";
 
         var taskLines = needed.SourceSummaries.Count == 0
             ? needed.Describe()
@@ -60,7 +72,9 @@ public sealed class DiscordNotifier
                         new { name = "Why", value = match.Reason, inline = true },
                         new { name = "Your tasks", value = string.IsNullOrWhiteSpace(taskLines) ? "cached/manual cog task" : taskLines, inline = false }
                     },
-                    footer = new { text = "Live data from TTR invasions API · tracker on ToonHQ" }
+                    footer = new { text = test
+                        ? "TEST ping · not a live match alert"
+                        : "Live data from TTR invasions API · tracker on ToonHQ" }
                 }
             }
         };

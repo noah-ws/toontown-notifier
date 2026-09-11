@@ -8,6 +8,15 @@
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"
       }
+    },
+    "TestDiscord": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "--test-discord",
+      "workingDirectory": "../..",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
     }
   }
 }

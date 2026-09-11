@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CompanionProxy/CompanionProxy.csproj" />
     <Project Path="src/ToontownNotifier/ToontownNotifier.csproj" />
   </Folder>
 </Solution>

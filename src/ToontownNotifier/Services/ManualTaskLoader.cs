@@ -19,6 +19,53 @@ public sealed class ManualTaskLoader
         _logger = logger;
     }
 
+    public NeededCogs? TryLoadMock()
+    {
+        var mock = _options.MockTask.Trim();
+        if (mock.Length == 0)
+        {
+            return null;
+        }
+
+        if (mock.Equals("any", StringComparison.OrdinalIgnoreCase)
+            || mock.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || mock.Equals("*", StringComparison.OrdinalIgnoreCase)
+            || mock.Equals("any_cog", StringComparison.OrdinalIgnoreCase))
+        {
+            return new NeededCogs
+            {
+                AnyCog = true,
+                SourceLabel = "mock",
+                SourceSummaries = ["Mock task: defeat any Cog"]
+            };
+        }
+
+        var cog = _catalog.CanonicalCog(mock);
+        if (cog is not null)
+        {
+            return new NeededCogs
+            {
+                SpecificCogs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { cog },
+                SourceLabel = "mock",
+                SourceSummaries = [$"Mock task: defeat {cog}"]
+            };
+        }
+
+        var department = _catalog.CanonicalDepartment(mock);
+        if (department is not null)
+        {
+            return new NeededCogs
+            {
+                Departments = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { department },
+                SourceLabel = "mock",
+                SourceSummaries = [$"Mock task: defeat {department}s"]
+            };
+        }
+
+        _logger.LogWarning("MOCK_TASK value is not a known cog or department: {Mock}", mock);
+        return null;
+    }
+
     public NeededCogs? TryLoad()
     {
         var path = ResolvePath(_options.TasksYamlPath);

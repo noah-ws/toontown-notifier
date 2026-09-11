@@ -7,6 +7,7 @@ services:
       - .env
     environment:
       COMPANION_HOST: host.docker.internal
+      COMPANION_PROXY_PORT: "11547"
       STATE_PATH: /app/data/state.json
       TASKS_YAML_PATH: /app/tasks.yaml
     extra_hosts:

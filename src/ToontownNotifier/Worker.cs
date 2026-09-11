@@ -99,23 +99,27 @@ public sealed class Worker : BackgroundService
         {
             if (!_loggedCompanionDown)
             {
-                _logger.LogInformation(
-                    "Toontown Companion App is not reachable on {Host}. Using cached tasks or tasks.yaml. Enable Companion App Support in-game and approve the prompt when you play.",
-                    _options.CompanionHost);
+                _logger.LogWarning(
+                    "TTR Companion App is not reachable on {Host} ({Error}). The game may be open, but the API only listens after you enable Companion App Support in Options and log into a Toon. Docker cannot use 127.0.0.1 — run .\\start.ps1 so the host proxy on port {ProxyPort} can forward it. Until then, invasions still poll using cache or tasks.yaml.",
+                    _options.CompanionHost,
+                    _companion.LastError ?? "unknown error",
+                    _options.CompanionProxyPort > 0 ? _options.CompanionProxyPort : 11547);
                 _loggedCompanionDown = true;
             }
 
-            if (state.CachedTasks.Count > 0)
-            {
-                needed = _taskParser.FromTasks(state.CachedTasks.Select(t => t.ToCompanionTask()), "cache");
-            }
-            else
-            {
-                needed = _manualTasks.TryLoad() ?? new NeededCogs { SourceLabel = "none" };
-            }
+            needed = state.CachedTasks.Count > 0
+                ? _taskParser.FromTasks(state.CachedTasks.Select(t => t.ToCompanionTask()), "cache")
+                : new NeededCogs { SourceLabel = "none" };
         }
 
-        LogNeededIfChanged(needed, toonName, live is not null);
+        if (needed.IsEmpty)
+        {
+            needed = _manualTasks.TryLoadMock()
+                     ?? _manualTasks.TryLoad()
+                     ?? needed;
+        }
+
+        LogNeededIfChanged(needed, toonName, live is not null && needed.SourceLabel == "companion");
 
         var invasions = await _invasions.GetInvasionsAsync(cancellationToken);
         var activeKeys = invasions.Select(invasion => invasion.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);

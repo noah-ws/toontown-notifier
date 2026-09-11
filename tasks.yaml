@@ -1,6 +1,4 @@
-# Needed Cogs when Toontown is not running and there is no cached Companion App snapshot.
-# Live tasks from the game always win; last-known cache is used next; this file is last resort.
-#
+# Needed Cogs when Toontown is not running, you have no cog tasks, or MOCK_TASK is unset.
 # Cog names must match TTR (example: Pencil Pusher, Mr. Hollywood, Mover & Shaker).
 # Departments: Bossbot, Lawbot, Cashbot, Sellbot.
 
@@ -11,4 +9,5 @@ cogs: []
 departments: []
 # - Sellbot
 
-any_cog: false
+# Set true to treat every invasion as a match (useful for testing with no ToonTasks).
+any_cog: true

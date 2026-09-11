@@ -10,31 +10,54 @@ Invasions come from the official [TTR invasions API](https://www.toontownrewritt
 
 1. Copy `.env.example` to `.env` and paste a Discord channel webhook URL.
 2. Optional: edit `tasks.yaml` with cogs or departments you care about when TTR is not running.
-3. In Toontown Rewritten, enable **Companion App Support** in Options.
+3. In Toontown Rewritten, enable **Companion App Support** in Options, then log into a Toon.
 
-### Docker Compose (recommended)
+### Docker Compose (Windows)
 
-```bash
-cp .env.example .env   # then edit DISCORD_WEBHOOK_URL
-docker compose up --build -d
+TTR’s Companion API listens only on `127.0.0.1`, which Docker cannot reach. `start.ps1` runs a tiny host proxy on port 11547 and then starts the container.
+
+```powershell
+.\start.ps1
 docker compose logs -f
 ```
 
-On first login, approve the in-game Companion App prompt for **ToontownNotifier**. Leave the container running. Tasks refresh while you play; after you log out, the last snapshot is used until you play again.
+On first connect, approve the in-game Companion App prompt. Leave it running. Tasks refresh while you play; after you log out, the last snapshot is used until you play again.
 
-The container reaches the game on your PC via `host.docker.internal`. If Companion App never connects from Docker, either run the worker on the host (`dotnet run`) or fill in `tasks.yaml`.
+```powershell
+.\stop.ps1
+```
+
+If you see `TTR Companion App is not reachable`, the game is usually open without Companion App enabled, or you are still on the login/toon-select screen. Invasions still poll; matching waits for live tasks, cache, or `tasks.yaml`.
 
 ### Run on the host
+
+This talks to TTR on localhost directly (no proxy):
 
 ```bash
 dotnet run --project src/ToontownNotifier
 ```
 
-Run this from the repo root so `tasks.yaml` and `.env` resolve. You can also set `DISCORD_WEBHOOK_URL` in the environment instead of `.env` (the worker reads environment variables; it does not load `.env` unless you use Compose).
+Run this from the repo root so `tasks.yaml` and `.env` resolve.
+
+### Test Discord ping
+
+Sends one webhook immediately (uses a live invasion if any exist, otherwise a fake Pencil Pusher) and exits. Does not mark that invasion as already notified.
+
+```powershell
+dotnet run --project src/ToontownNotifier -- --test-discord
+```
+
+Or from Docker:
+
+```powershell
+docker compose run --rm --no-deps notifier --test-discord
+```
 
 ## How matching works
 
-Priority: live Companion App → last-known cache → `tasks.yaml`.
+Priority: live Companion App cog tasks → `MOCK_TASK` → `tasks.yaml` → last-known cache.
+
+If you have no cog ToonTasks, set `MOCK_TASK=any` in `.env` (matches every invasion) or fill in `tasks.yaml`. `tasks.yaml` currently has `any_cog: true` for testing; set it back to `false` when you have real tasks.
 
 - Named cog (“Defeat 5 Pencil Pushers”) matches that invasion type, including Version 2.0 / Skelecog variants.
 - Department (“Defeat 10 Sellbots”) matches any invading cog in that department.
@@ -50,5 +73,7 @@ Each invasion is notified once per district + cog type until it ends.
 | `DISCORD_WEBHOOK_URL` | Discord incoming webhook (required for pings) |
 | `POLL_INTERVAL_SECONDS` | How often to check invasions (default 30) |
 | `COMPANION_HOST` | Companion API host (`127.0.0.1` locally, `host.docker.internal` in Compose) |
+| `COMPANION_PROXY_PORT` | Host proxy port used from Docker (default 11547) |
+| `MOCK_TASK` | Fake task for testing: `any`, a cog name, or a department |
 | `STATE_PATH` | Cached tasks + already-notified invasions |
 | `TASKS_YAML_PATH` | Manual fallback list |

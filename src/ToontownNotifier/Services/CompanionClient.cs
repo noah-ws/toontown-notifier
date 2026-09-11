@@ -13,6 +13,8 @@ public sealed class CompanionClient
     private readonly string _authorization = Guid.NewGuid().ToString("N");
     private int? _lastPort;
 
+    public string? LastError { get; private set; }
+
     public CompanionClient(
         IHttpClientFactory httpClientFactory,
         IOptions<NotifierOptions> options,
@@ -25,17 +27,20 @@ public sealed class CompanionClient
 
     public async Task<CompanionSnapshot?> TryGetSnapshotAsync(CancellationToken cancellationToken)
     {
-        var ports = EnumeratePorts();
-        foreach (var port in ports)
+        var errors = new List<string>();
+        foreach (var port in EnumeratePorts())
         {
             try
             {
-                var snapshot = await FetchAsync(port, cancellationToken);
+                var (snapshot, fetchError) = await FetchAsync(port, cancellationToken);
                 if (snapshot is not null)
                 {
                     _lastPort = port;
+                    LastError = null;
                     return snapshot;
                 }
+
+                errors.Add($":{port} {fetchError ?? "empty response"}");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -43,30 +48,47 @@ public sealed class CompanionClient
             }
             catch (Exception ex)
             {
+                var reason = ex.GetBaseException().Message;
+                errors.Add($":{port} {reason}");
                 _logger.LogDebug(ex, "Companion App port {Port} is unavailable", port);
             }
         }
 
+        LastError = errors.Count == 0 ? "no companion ports configured" : string.Join("; ", errors.Take(4));
         return null;
     }
 
     private IEnumerable<int> EnumeratePorts()
     {
-        if (_lastPort is int last)
+        var seen = new HashSet<int>();
+        IEnumerable<int> candidates()
         {
-            yield return last;
+            if (_lastPort is int last)
+            {
+                yield return last;
+            }
+
+            if (_options.CompanionProxyPort > 0)
+            {
+                yield return _options.CompanionProxyPort;
+            }
+
+            for (var port = _options.CompanionPortStart; port <= _options.CompanionPortEnd; port++)
+            {
+                yield return port;
+            }
         }
 
-        for (var port = _options.CompanionPortStart; port <= _options.CompanionPortEnd; port++)
+        foreach (var port in candidates())
         {
-            if (port != _lastPort)
+            if (seen.Add(port))
             {
                 yield return port;
             }
         }
     }
 
-    private async Task<CompanionSnapshot?> FetchAsync(int port, CancellationToken cancellationToken)
+    private async Task<(CompanionSnapshot? Snapshot, string? Error)> FetchAsync(int port, CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient("companion");
         var url = $"http://{FormatHost(_options.CompanionHost)}:{port}/info.json";
@@ -78,13 +100,21 @@ public sealed class CompanionClient
         using var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogDebug("Companion App on port {Port} returned {StatusCode}", port, (int)response.StatusCode);
-            return null;
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            var snippet = string.IsNullOrWhiteSpace(body)
+                ? ""
+                : " " + body.ReplaceLineEndings(" ").Trim();
+            if (snippet.Length > 180)
+            {
+                snippet = snippet[..180];
+            }
+
+            return (null, $"HTTP {(int)response.StatusCode}{snippet}");
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        return ParseSnapshot(document.RootElement);
+        return (ParseSnapshot(document.RootElement), null);
     }
 
     private static CompanionSnapshot ParseSnapshot(JsonElement root)
