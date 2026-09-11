@@ -1,0 +1,14 @@
+# Needed Cogs when Toontown is not running and there is no cached Companion App snapshot.
+# Live tasks from the game always win; last-known cache is used next; this file is last resort.
+#
+# Cog names must match TTR (example: Pencil Pusher, Mr. Hollywood, Mover & Shaker).
+# Departments: Bossbot, Lawbot, Cashbot, Sellbot.
+
+cogs: []
+# - Pencil Pusher
+# - Tightwad
+
+departments: []
+# - Sellbot
+
+any_cog: false

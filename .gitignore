@@ -1,0 +1,14 @@
+# Build
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Secrets and runtime state
+.env
+data/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store

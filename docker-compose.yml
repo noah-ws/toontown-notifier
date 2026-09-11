@@ -1,0 +1,19 @@
+services:
+  notifier:
+    build: .
+    container_name: toontown-notifier
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      COMPANION_HOST: host.docker.internal
+      STATE_PATH: /app/data/state.json
+      TASKS_YAML_PATH: /app/tasks.yaml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - notifier-data:/app/data
+      - ./tasks.yaml:/app/tasks.yaml:ro
+
+volumes:
+  notifier-data:
